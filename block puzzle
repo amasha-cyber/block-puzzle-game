@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tetris Game</title>
+<style>
+  body {
+    background: #111;
+    color: white;
+    text-align: center;
+    font-family: Arial;
+  }
+  canvas {
+    background: #222;
+    margin-top: 20px;
+    border: 3px solid #555;
+  }
+</style>
+</head>
+<body>
+
+<h1>🎮 Tetris</h1>
+<p>← → move | ↑ rotate | ↓ faster</p>
+<canvas id="game" width="240" height="400"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const COLS = 10;
+const ROWS = 20;
+const SIZE = 20;
+
+let grid = Array.from({length: ROWS}, () => Array(COLS).fill(0));
+
+const shapes = [
+  [[1,1,1,1]],
+  [[1,1],[1,1]],
+  [[0,1,0],[1,1,1]],
+  [[1,0,0],[1,1,1]],
+  [[0,0,1],[1,1,1]],
+];
+
+let current = randomPiece();
+let pos = {x: 3, y: 0};
+
+function randomPiece() {
+  return shapes[Math.floor(Math.random()*shapes.length)];
+}
+
+function drawCell(x,y,color="cyan") {
+  ctx.fillStyle = color;
+  ctx.fillRect(x*SIZE, y*SIZE, SIZE-1, SIZE-1);
+}
+
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  grid.forEach((row,y)=>{
+    row.forEach((val,x)=>{
+      if(val) drawCell(x,y,"orange");
+    });
+  });
+
+  current.forEach((row,y)=>{
+    row.forEach((val,x)=>{
+      if(val) drawCell(pos.x+x,pos.y+y);
+    });
+  });
+}
+
+function collide(nx,ny,shape) {
+  return shape.some((row,y)=>
+    row.some((val,x)=>{
+      if(!val) return false;
+      let px = nx + x;
+      let py = ny + y;
+      return px<0 || px>=COLS || py>=ROWS || (grid[py] && grid[py][px]);
+    })
+  );
+}
+
+function merge() {
+  current.forEach((row,y)=>{
+    row.forEach((val,x)=>{
+      if(val) grid[pos.y+y][pos.x+x] = 1;
+    });
+  });
+}
+
+function rotate(shape) {
+  return shape[0].map((_,i)=>shape.map(row=>row[i]).reverse());
+}
+
+function clearLines() {
+  grid = grid.filter(row => row.some(v=>!v));
+  while(grid.length < ROWS) {
+    grid.unshift(Array(COLS).fill(0));
+  }
+}
+
+function drop() {
+  if(!collide(pos.x,pos.y+1,current)) {
+    pos.y++;
+  } else {
+    merge();
+    clearLines();
+    current = randomPiece();
+    pos = {x:3,y:0};
+
+    if(collide(pos.x,pos.y,current)) {
+      alert("Game Over");
+      grid = Array.from({length: ROWS}, () => Array(COLS).fill(0));
+    }
+  }
+}
+
+document.addEventListener("keydown", e=>{
+  if(e.key==="ArrowLeft" && !collide(pos.x-1,pos.y,current)) pos.x--;
+  if(e.key==="ArrowRight" && !collide(pos.x+1,pos.y,current)) pos.x++;
+  if(e.key==="ArrowDown") drop();
+  if(e.key==="ArrowUp") {
+    let rotated = rotate(current);
+    if(!collide(pos.x,pos.y,rotated)) current = rotated;
+  }
+});
+
+let last = 0;
+function gameLoop(time=0) {
+  if(time - last > 500) {
+    drop();
+    last = time;
+  }
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>
